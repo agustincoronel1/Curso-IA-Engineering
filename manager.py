@@ -61,12 +61,16 @@ class AsyncLLMManager:
     async def generate(self, messages: list[ChatMessage]) -> ModelResponse:
         # Intenta generar una respuesta con el proveedor principal.
 
+        last_error = None  # Guardamos el último error para poder explicar qué pasó.
+
         for attempt in range(1, self.max_retries + 1):
 
             try:
                 return await self.client.generate(messages)
 
             except Exception as error:
+                last_error = error  # Nos lo guardamos por si al final tenemos que avisar.
+
                 print(
                     f"Intento {attempt}/{self.max_retries} "
                     f"con {self.provider} falló: {type(error).__name__}"
@@ -89,14 +93,16 @@ class AsyncLLMManager:
 
             except Exception as error:
                 raise RuntimeError(
-                    f"También falló el proveedor de fallback: {type(error).__name__}"
+                    f"También falló el proveedor de fallback: "
+                    f"{type(error).__name__}: {error}"
                 ) from error
 
 
         raise RuntimeError(
             f"{self.provider} falló después de {self.max_retries} intentos "
-            "y no hay proveedor de fallback disponible."
-        )
+            f"y no hay proveedor de fallback disponible. "
+            f"Último error: {type(last_error).__name__}: {last_error}"
+        ) from last_error
 
 
     async def stream(
@@ -111,6 +117,6 @@ class AsyncLLMManager:
 
         except Exception as error:
             raise RuntimeError(
-                f"Error durante el streaming con {self.provider}: "
-                f"{type(error).__name__}"
+                f"falló el streaming con {self.provider} "
+                f"({type(error).__name__}: {error})"
             ) from error
