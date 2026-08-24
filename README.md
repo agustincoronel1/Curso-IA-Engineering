@@ -1,3 +1,4 @@
+# Pre-entrega 1
 # Unified Async LLM Client
 
 Cliente LLM asíncrono y multiproveedor desarrollado en Python 3.12, con una interfaz común para OpenAI y Anthropic.
@@ -18,13 +19,13 @@ Cliente LLM asíncrono y multiproveedor desarrollado en Python 3.12, con una int
 
 | Archivo | Qué hace |
 | --- | --- |
-| `schemas.py` | Modelos de Pydantic: `ChatMessage`, `LLMConfig` y `ModelResponse`. Define y valida las reglas de los datos. |
-| `clients/base.py` | `BaseLLMClient`: la clase abstracta que fija el contrato (`generate` y `stream`) que todo proveedor debe cumplir. |
-| `clients/openai_client.py` | Implementación del contrato para OpenAI. |
-| `clients/anthropic_client.py` | Implementación del contrato para Anthropic (separa el mensaje `system`, como pide su API). |
-| `manager.py` | `AsyncLLMManager`: elige el cliente, aplica los reintentos con backoff y deriva al fallback si hace falta. |
-| `main.py` | Punto de entrada. Lee el `.env`, arma el manager y ejecuta las dos pruebas. |
-| `tests/` | Tests con `unittest`. No hacen llamadas reales a ninguna API. |
+| `pre_entrega_1/schemas.py` | Modelos de Pydantic: `ChatMessage`, `LLMConfig` y `ModelResponse`. Define y valida las reglas de los datos. |
+| `pre_entrega_1/clients/base.py` | `BaseLLMClient`: la clase abstracta que fija el contrato (`generate` y `stream`) que todo proveedor debe cumplir. |
+| `pre_entrega_1/clients/openai_client.py` | Implementación del contrato para OpenAI. |
+| `pre_entrega_1/clients/anthropic_client.py` | Implementación del contrato para Anthropic (separa el mensaje `system`, como pide su API). |
+| `pre_entrega_1/manager.py` | `AsyncLLMManager`: elige el cliente, aplica los reintentos con backoff y deriva al fallback si hace falta. |
+| `pre_entrega_1/main.py` | Punto de entrada. Lee el `.env`, arma el manager y ejecuta las dos pruebas. |
+| `pre_entrega_1/tests/` | Tests con `unittest`. No hacen llamadas reales a ninguna API. |
 
 ## Instalación
 
@@ -66,7 +67,7 @@ El fallback solo se configura si el proveedor secundario tiene **API Key y model
 ## Ejecución
 
 ```powershell
-python main.py
+python -m pre_entrega_1.main
 ```
 
 `main.py` ejecuta dos pruebas seguidas con el mismo manager:
@@ -81,7 +82,7 @@ Las dos están envueltas en `try/except`, así que si fallan el principal, sus r
 Los tests usan `unittest` (librería estándar, sin dependencias extra) y clientes falsos. **No consumen créditos ni necesitan API Keys reales.**
 
 ```powershell
-python -m unittest discover -s tests -t . -v
+python -m unittest discover -s pre_entrega_1/tests -t . -v
 ```
 
 Cubren:
@@ -96,7 +97,7 @@ Cubren:
 ## Arquitectura
 
 ```
-main.py
+pre_entrega_1/main.py
    ↓  (lee el .env y arma la configuración)
 AsyncLLMManager        → reintentos + backoff + fallback
    ↓  (habla contra el contrato, no contra un SDK concreto)
@@ -114,3 +115,35 @@ El manager además permite que un **proveedor secundario cubra al principal**: s
 - **OpenAI**: probado contra la API real, tanto en respuesta normal como en streaming.
 - **Anthropic**: implementado siguiendo el mismo contrato, pero todavía no ejecutado contra la API real.
 - La lógica multiproveedor (reintentos, backoff y fallback) está cubierta por los tests con clientes falsos, sin llamadas reales a ninguna API.
+
+
+
+# Pre-entrega 2 — Pipeline de Procesamiento Validado
+
+Pipeline asíncrono desarrollado con LangChain y LCEL para analizar textos técnicos y devolver una salida estructurada y validada con Pydantic.
+
+## Funcionalidad
+
+El pipeline recibe un texto técnico, como una descripción de arquitectura o un log de error, y extrae:
+
+- Tecnologías mencionadas.
+- Nivel de criticidad: baja, media o alta.
+- Resumen técnico.
+
+La salida es validada mediante un modelo Pydantic.
+
+## Arquitectura
+
+El flujo principal utiliza LCEL:
+
+```text
+ChatPromptTemplate
+        |
+        v
+ChatOpenAI
+        |
+        v
+Structured Output
+        |
+        v
+Validación Pydantic

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod  # ABC nos permite crear una clase "contrato"; abstractmethod obliga a las clases hijas a implementar ciertos métodos.
 from collections.abc import AsyncGenerator  # Representa una función asíncrona que va entregando resultados de a poco, útil para streaming.
 
-from schemas import ChatMessage, LLMConfig, ModelResponse  # Importamos las estructuras que ya creamos en schemas.py.
+from pre_entrega_1.schemas import ChatMessage, LLMConfig, ModelResponse  # Importamos las estructuras que ya creamos en schemas.py.
 
 
 class BaseLLMClient(ABC):  # Clase base que define qué debe poder hacer cualquier cliente de IA.

@@ -4,8 +4,8 @@ import os  # Sirve para leer variables de entorno como OPENAI_API_KEY.
 
 from dotenv import load_dotenv  # Lee las variables guardadas en el archivo .env.
 
-from manager import AsyncLLMManager  # Nuestro manager elige qué proveedor usar.
-from schemas import ChatMessage, LLMConfig  # Nuestros modelos de datos validados con Pydantic.
+from pre_entrega_1.manager import AsyncLLMManager  # Nuestro manager elige qué proveedor usar.
+from pre_entrega_1.schemas import ChatMessage, LLMConfig  # Nuestros modelos de datos validados con Pydantic.
 
 
 load_dotenv()  # Carga las variables del archivo .env para poder usarlas desde Python.

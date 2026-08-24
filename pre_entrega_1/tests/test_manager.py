@@ -8,9 +8,9 @@
 import unittest
 from unittest.mock import AsyncMock, patch  # patch nos deja reemplazar asyncio.sleep para que los tests sean instantáneos.
 
-from clients.base import BaseLLMClient
-from manager import AsyncLLMManager
-from schemas import ChatMessage, LLMConfig, ModelResponse
+from pre_entrega_1.clients.base import BaseLLMClient
+from pre_entrega_1.manager import AsyncLLMManager
+from pre_entrega_1.schemas import ChatMessage, LLMConfig, ModelResponse
 
 
 MENSAJES = [ChatMessage(role="user", content="hola")]  # Mensajes de prueba reutilizables.
@@ -109,7 +109,7 @@ class TestGenerate(unittest.IsolatedAsyncioTestCase):
 
         # Reemplazamos asyncio.sleep por un mock: así el test no tarda los
         # segundos del backoff, pero igual podemos comprobar que se llamó.
-        with patch("manager.asyncio.sleep", new=AsyncMock()) as sleep_falso:
+        with patch("pre_entrega_1.manager.asyncio.sleep", new=AsyncMock()) as sleep_falso:
             resultado = await manager.generate(MENSAJES)
 
         self.assertEqual(resultado.content, "respondio el fallback")
@@ -131,7 +131,7 @@ class TestGenerate(unittest.IsolatedAsyncioTestCase):
 
         manager = construir_manager(principal, fallback, max_retries=2)
 
-        with patch("manager.asyncio.sleep", new=AsyncMock()):
+        with patch("pre_entrega_1.manager.asyncio.sleep", new=AsyncMock()):
             with self.assertRaises(RuntimeError) as contexto:
                 await manager.generate(MENSAJES)
 
@@ -147,7 +147,7 @@ class TestGenerate(unittest.IsolatedAsyncioTestCase):
 
         manager = construir_manager(principal, cliente_fallback=None, max_retries=2)
 
-        with patch("manager.asyncio.sleep", new=AsyncMock()):
+        with patch("pre_entrega_1.manager.asyncio.sleep", new=AsyncMock()):
             with self.assertRaises(RuntimeError) as contexto:
                 await manager.generate(MENSAJES)
 
