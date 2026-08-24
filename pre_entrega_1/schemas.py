@@ -1,5 +1,6 @@
 # archivo donde definimos las reglas de los datos de nuestra aplicación
 from typing import Literal  # Sirve para limitar una variable a opciones específicas.
+from enum import Enum
 
 from pydantic import BaseModel, Field  # BaseModel valida datos; Field agrega reglas y valores por defecto.
 
@@ -19,3 +20,4 @@ class ModelResponse(BaseModel):  # Define cómo queremos guardar la respuesta de
     content: str  # Texto que generó la IA.
     provider: str  # Proveedor que respondió, por ejemplo "openai" o "anthropic".
     model: str  # Modelo específico que respondió, por ejemplo "gpt-4o-mini".
+

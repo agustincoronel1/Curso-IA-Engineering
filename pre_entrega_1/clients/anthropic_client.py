@@ -2,8 +2,8 @@ from collections.abc import AsyncGenerator  # Tipo usado para una función async
 
 from anthropic import AsyncAnthropic  # Cliente ASÍNCRONO oficial de Anthropic.
 
-from clients.base import BaseLLMClient  # Nuestro contrato común para todos los proveedores.
-from schemas import ChatMessage, LLMConfig, ModelResponse  # Los formatos de datos que definimos con Pydantic.
+from pre_entrega_1.clients.base import BaseLLMClient  # Nuestro contrato común para todos los proveedores.
+from pre_entrega_1.schemas import ChatMessage, LLMConfig, ModelResponse  # Los formatos de datos que definimos con Pydantic.
 
 
 class AnthropicClient(BaseLLMClient):  # Anthropic también tiene que cumplir las reglas de BaseLLMClient.

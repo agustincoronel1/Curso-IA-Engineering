@@ -2,8 +2,8 @@ from collections.abc import AsyncGenerator  # Tipo de dato para una función asy
 
 from openai import AsyncOpenAI  # Cliente ASÍNCRONO oficial de OpenAI.
 
-from clients.base import BaseLLMClient  # Nuestro contrato común que todos los proveedores deben respetar.
-from schemas import ChatMessage, LLMConfig, ModelResponse  # Nuestros modelos de datos creados con Pydantic.
+from pre_entrega_1.clients.base import BaseLLMClient  # Nuestro contrato común que todos los proveedores deben respetar.
+from pre_entrega_1.schemas import ChatMessage, LLMConfig, ModelResponse  # Nuestros modelos de datos creados con Pydantic.
 
 
 class OpenAIClient(BaseLLMClient):  # Este cliente cumple las reglas que definimos en BaseLLMClient.

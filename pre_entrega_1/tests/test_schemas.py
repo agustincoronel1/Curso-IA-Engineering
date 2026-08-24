@@ -5,7 +5,7 @@ import unittest  # Librería estándar de Python para escribir tests.
 
 from pydantic import ValidationError  # El error que lanza Pydantic cuando un dato no cumple las reglas.
 
-from schemas import ChatMessage, LLMConfig, ModelResponse
+from pre_entrega_1.schemas import ChatMessage, LLMConfig, ModelResponse
 
 
 class TestLLMConfig(unittest.TestCase):

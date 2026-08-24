@@ -2,10 +2,10 @@
 import asyncio  # Lo usamos para esperar entre reintentos sin bloquear el programa.
 from collections.abc import AsyncGenerator  # Tipo usado por nuestro método de streaming.
 
-from clients.base import BaseLLMClient  # Contrato común de todos nuestros clientes.
-from clients.openai_client import OpenAIClient  # Implementación de OpenAI.
-from clients.anthropic_client import AnthropicClient  # Implementación de Anthropic.
-from schemas import ChatMessage, LLMConfig, ModelResponse  # Nuestros datos validados.
+from pre_entrega_1.clients.base import BaseLLMClient  # Contrato común de todos nuestros clientes.
+from pre_entrega_1.clients.openai_client import OpenAIClient  # Implementación de OpenAI.
+from pre_entrega_1.clients.anthropic_client import AnthropicClient  # Implementación de Anthropic.
+from pre_entrega_1.schemas import ChatMessage, LLMConfig, ModelResponse  # Nuestros datos validados.
 
 
 class AsyncLLMManager:
