@@ -1,0 +1,138 @@
+FastAPI: framework web asincronico para Python
+==============================================
+
+Que es FastAPI
+--------------
+
+FastAPI es un framework para construir APIs HTTP en Python. Sus dos rasgos
+distintivos son que fue disenado desde el principio para trabajar de forma
+asincronica, y que usa las anotaciones de tipo de Python para validar los datos
+automaticamente.
+
+Se apoya en dos piezas:
+
+- Starlette, que resuelve la parte web: rutas, peticiones y respuestas.
+- Pydantic, que resuelve la validacion y la conversion de datos.
+
+Rutas y endpoints
+-----------------
+
+Un endpoint es una direccion de la API asociada a un metodo HTTP. En FastAPI se
+declara con un decorador sobre una funcion:
+
+    @app.get("/usuarios/{usuario_id}")
+    def obtener_usuario(usuario_id: int):
+        return {"id": usuario_id}
+
+El decorador @app.get indica el metodo HTTP y la ruta. Lo que devuelve la
+funcion se convierte automaticamente a JSON.
+
+Los metodos HTTP mas usados y su significado:
+
+- GET: leer informacion, sin modificar nada.
+- POST: crear un recurso nuevo.
+- PUT o PATCH: actualizar un recurso existente.
+- DELETE: eliminar un recurso.
+
+Los parametros de la funcion se completan segun donde aparecen: si el nombre
+coincide con una parte de la ruta es un parametro de camino; si no coincide, es
+un parametro de consulta; y si es un modelo de Pydantic, se toma del cuerpo de
+la peticion.
+
+Que funcion cumple Pydantic dentro de FastAPI
+---------------------------------------------
+
+Pydantic es la libreria que FastAPI usa para definir y validar la forma de los
+datos. Su rol dentro del framework es concreto:
+
+1. Valida los datos que entran. Si el cliente manda un JSON que no cumple el
+   modelo declarado, FastAPI rechaza la peticion con un error 422 y un detalle
+   de que campo fallo. La funcion del endpoint ni siquiera se ejecuta.
+
+2. Convierte los tipos. Si un campo esta declarado como int y llega el texto
+   "42", Pydantic lo transforma a entero. Si llega "hola", la validacion falla.
+
+3. Define el contrato de salida. Con el parametro response_model se declara que
+   forma tiene la respuesta, y FastAPI filtra los campos que no correspondan.
+   Esto evita, por ejemplo, devolver por accidente el hash de una contrasena.
+
+4. Genera la documentacion automatica. A partir de los modelos, FastAPI arma el
+   esquema OpenAPI y publica una documentacion interactiva en la ruta /docs.
+
+Un modelo de Pydantic se declara heredando de BaseModel:
+
+    from pydantic import BaseModel, Field
+
+    class UsuarioNuevo(BaseModel):
+        nombre: str = Field(min_length=1)
+        email: str
+        edad: int = Field(ge=0, le=120)
+
+Field permite agregar reglas de validacion y descripciones a cada campo. En el
+ejemplo, ge=0 significa mayor o igual a cero, y le=120 significa menor o igual a
+ciento veinte.
+
+La ventaja practica es que la validacion queda declarada en un solo lugar, junto
+a la definicion del dato, y no repartida en condicionales por todo el codigo.
+
+Endpoints asincronicos
+----------------------
+
+En FastAPI un endpoint puede declararse con def o con async def.
+
+    @app.get("/productos")
+    async def listar_productos():
+        productos = await repositorio.obtener_todos()
+        return productos
+
+Con async def, mientras el endpoint espera la base de datos, el servidor puede
+atender otras peticiones. Esto permite sostener mas usuarios concurrentes con el
+mismo hardware.
+
+La regla practica es la siguiente: si adentro de la funcion se usa await sobre
+librerias asincronicas, conviene async def. Si se usa una libreria bloqueante
+que no soporta await, conviene def normal, porque FastAPI la ejecuta en un hilo
+aparte y evita frenar el event loop.
+
+El error clasico es declarar async def y adentro llamar a una libreria
+bloqueante: en ese caso se bloquea el event loop y toda la aplicacion se frena.
+
+Inyeccion de dependencias
+-------------------------
+
+FastAPI incluye un sistema de dependencias con la funcion Depends. Sirve para
+que varios endpoints compartan piezas comunes, como la sesion de base de datos o
+la verificacion del usuario autenticado, sin repetir el codigo en cada funcion.
+
+    def obtener_sesion():
+        ...
+
+    @app.get("/pedidos")
+    def listar(sesion = Depends(obtener_sesion)):
+        ...
+
+FastAPI resuelve la dependencia antes de ejecutar el endpoint y pasa el
+resultado como argumento.
+
+Manejo de errores
+-----------------
+
+Para devolver un error controlado se usa HTTPException, indicando el codigo de
+estado y el mensaje:
+
+    raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+Los codigos de estado mas frecuentes son 200 cuando todo salio bien, 201 cuando
+se creo un recurso, 400 cuando el pedido esta mal formado, 401 cuando falta
+autenticacion, 404 cuando el recurso no existe, 422 cuando falla la validacion y
+500 cuando hay un error interno del servidor.
+
+Como se ejecuta
+---------------
+
+FastAPI necesita un servidor ASGI para correr. El mas usado es Uvicorn:
+
+    uvicorn main:app --reload
+
+La opcion --reload reinicia el servidor cuando cambia un archivo, y se usa
+solamente en desarrollo, nunca en produccion.

@@ -147,3 +147,148 @@ Structured Output
         |
         v
 Validación Pydantic
+```
+
+
+# Pre-entrega 3 — Sistema de recuperación semántica local (RAG)
+
+Sistema RAG local: responde preguntas usando **únicamente** un dataset propio de documentos, sin depender del conocimiento general del modelo.
+
+El flujo completo es:
+
+```text
+Documentos (.txt / .md)
+        |
+        v
+Chunking (~500 tokens, ~50 de overlap)
+        |
+        v
+Embeddings (text-embedding-3-small)
+        |
+        v
+ChromaDB persistente (vectorstore/)
+        |
+        v
+Retriever semántico (top_k = 4)
+        |
+        v
+Prompt grounded (prohíbe conocimiento externo)
+        |
+        v
+LLM (gpt-4o-mini, llamada asíncrona)
+        |
+        v
+PydanticOutputParser -> RAGResponse
+```
+
+## Estructura
+
+```text
+pre_entrega_3/
+├── data/                  # dataset: 4 archivos .txt sobre backend con Python
+│   ├── python_backend.txt
+│   ├── fastapi.txt
+│   ├── postgresql.txt
+│   └── docker.txt
+├── ingest.py              # documentos -> chunks -> embeddings -> ChromaDB
+├── rag.py                 # retriever + prompt + cadena LCEL + parser
+├── schemas.py             # RAGResponse: respuesta + referencias
+└── main.py                # demo: pregunta válida + pregunta trampa
+```
+
+La base vectorial se persiste en `vectorstore/`, en la raíz del proyecto. Esa carpeta está en `.gitignore`: son datos derivados, se regeneran ejecutando la ingesta.
+
+## Instalación
+
+Windows (PowerShell):
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+Dependencias propias de esta entrega: `chromadb`, `langchain-chroma` y `langchain-text-splitters`.
+
+## Variables de entorno
+
+Esta pre-entrega solo necesita una variable, la misma que ya usa la Pre-entrega 1:
+
+```env
+OPENAI_API_KEY=
+```
+
+Se lee del `.env` con `python-dotenv`. El `.env` está ignorado por Git y en `.env.example` van únicamente placeholders, nunca claves reales.
+
+## Ejecución
+
+```powershell
+python -m pre_entrega_3.main
+```
+
+`main.py` verifica la API key, ejecuta la ingesta **solo si hace falta** y después corre las dos pruebas.
+
+También se puede correr la ingesta por separado:
+
+```powershell
+python -m pre_entrega_3.ingest
+```
+
+La primera ejecución indexa los 4 documentos en 12 chunks. Las siguientes detectan que la colección ya está poblada e imprimen `La base vectorial ya esta poblada. No se vuelve a indexar.`, sin volver a gastar créditos de embeddings.
+
+## Qué hacen las pruebas
+
+**1. Pregunta normal** — `¿Qué función cumple Pydantic cuando se utiliza FastAPI?`
+
+La respuesta está en `data/fastapi.txt`. El retriever recupera ese fragmento y el modelo responde con lo que dice el documento, citando `fastapi.txt` en las referencias.
+
+**2. Pregunta trampa** — `¿Cuántos campeonatos mundiales ganó la selección argentina de fútbol?`
+
+Esa información **no** está en el dataset, pero el modelo la sabe por su entrenamiento. El retriever igual devuelve 4 fragmentos (siempre devuelve los más cercanos, aunque sean irrelevantes), y el prompt tiene que lograr que el modelo mire ese contexto, vea que no habla del tema y responda exactamente `No lo sé`, con la lista de referencias vacía.
+
+Es la prueba clave del sistema: si respondiera el número de mundiales, no habría forma de confiar en que sus respuestas vienen de nuestros documentos.
+
+`main.py` verifica las dos condiciones automáticamente al final e imprime `OK` o `ATENCION`.
+
+## Conceptos aplicados
+
+| Concepto | Qué es |
+| --- | --- |
+| **RAG** | Retrieval Augmented Generation. Primero se busca información en documentos propios y recién después se le pide al modelo que responda usando solo eso. |
+| **Embeddings** | Traducción de un texto a un vector de números que representa su significado. Textos parecidos quedan cerca en ese espacio. |
+| **Semantic search** | Búsqueda por significado, no por palabras iguales. "validar datos en FastAPI" encuentra un texto sobre "Pydantic rechaza el JSON con un 422". |
+| **Chunking** | Partir cada documento en fragmentos chicos. Un embedding de un texto largo mezcla temas y se recupera mal; uno chico habla de una sola cosa. |
+| **Overlap** | Cada chunk repite el final del anterior (~50 tokens), para que una idea cortada al medio quede completa en al menos un fragmento. |
+| **ChromaDB** | Base de datos vectorial local. En vez de buscar por igualdad como SQL, busca por cercanía entre vectores. Persiste en disco. |
+| **Retriever** | Objeto con una sola responsabilidad: dada una pregunta, devolver los documentos más relevantes. |
+| **top_k** | Cuántos fragmentos se recuperan. Acá `top_k = 4`: más chunks cuestan más tokens y agregan ruido que baja la precisión. |
+| **LCEL** | LangChain Expression Language: componer pasos con el operador `\|`, como una tubería. La cadena entera queda como un único objeto con `.invoke()` y `.ainvoke()`. |
+| **Grounded generation** | Generación anclada a una fuente: el prompt prohíbe explícitamente usar conocimiento externo y obliga a admitir "No lo sé". |
+| **PydanticOutputParser** | Genera desde el modelo Pydantic las instrucciones de formato JSON que se inyectan al prompt, y después valida la respuesta del LLM contra ese esquema. |
+| **async** | Las dos operaciones caras son de red (embedding de la pregunta y generación). Con `async`/`await` el proceso no queda bloqueado durante esas esperas. |
+
+## Salida estructurada
+
+```python
+class RAGResponse(BaseModel):
+    respuesta: str
+    referencias: list[str]
+```
+
+El recorrido completo de la salida estructurada es:
+
+```text
+RAGResponse
+    -> PydanticOutputParser
+    -> get_format_instructions()   (se inyecta en el prompt)
+    -> LLM responde en JSON
+    -> parser valida
+    -> instancia de RAGResponse
+```
+
+Se usa `PydanticOutputParser` de forma explícita, y no `.with_structured_output()`, para que el mecanismo quede a la vista: el formato se pide con instrucciones dentro del prompt y el parseo es un paso visible de la cadena.
+
+## Estado actual
+
+- Probado contra la API real de OpenAI: la ingesta indexa 12 chunks y las dos preguntas se responden como se espera.
+- La pregunta trampa devuelve `No lo sé` con referencias vacías.
+- La persistencia funciona: en la segunda ejecución no se recalcula ningún embedding.

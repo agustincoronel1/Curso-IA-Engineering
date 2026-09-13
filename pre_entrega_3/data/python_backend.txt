@@ -1,0 +1,117 @@
+Fundamentos de desarrollo backend con Python
+============================================
+
+Que es el backend
+-----------------
+
+El backend es la parte de una aplicacion que el usuario no ve. Se ejecuta en un
+servidor y se encarga de recibir pedidos, aplicar reglas de negocio, hablar con
+la base de datos y devolver una respuesta. El frontend, es decir la pantalla,
+solo muestra lo que el backend le entrega.
+
+Un backend tipico resuelve tres responsabilidades:
+
+1. Exponer una interfaz de comunicacion, normalmente una API HTTP.
+2. Validar y procesar los datos que llegan desde afuera.
+3. Guardar y recuperar informacion de forma persistente.
+
+Por que Python para backend
+---------------------------
+
+Python se usa mucho en backend por tres motivos concretos:
+
+- La sintaxis es simple y el codigo se lee rapido, lo que baja el costo de
+  mantenimiento a lo largo del tiempo.
+- Tiene un ecosistema enorme de librerias ya resueltas: clientes de bases de
+  datos, validacion, testing, colas de tareas, clientes HTTP.
+- Los frameworks web maduros, como Django, Flask y FastAPI, cubren desde
+  proyectos chicos hasta sistemas grandes en produccion.
+
+La contra historica de Python es que es mas lento que los lenguajes compilados.
+En la practica, la mayoria de los backends pasan la mayor parte del tiempo
+esperando respuestas de la base de datos o de otras APIs, no calculando. Por eso
+el cuello de botella real suele ser la espera, y no la velocidad del lenguaje.
+
+Entrada salida y concurrencia
+-----------------------------
+
+Una operacion de entrada salida, abreviada I/O, es cualquier operacion donde el
+programa le pide algo a otro sistema y se queda esperando: una consulta a
+PostgreSQL, una llamada a una API externa, o leer un archivo del disco.
+
+Durante esa espera el procesador no esta haciendo nada util. La programacion
+asincronica aprovecha justamente ese hueco: mientras una peticion espera la
+respuesta de la base de datos, el mismo proceso puede atender otra peticion.
+
+En Python esto se escribe con las palabras clave async y await:
+
+- async def declara una funcion asincronica, tambien llamada corrutina.
+- await marca el punto exacto donde la funcion se suspende y le cede el control
+  al event loop para que ejecute otra tarea.
+- El event loop es el coordinador que decide que corrutina sigue cuando una
+  espera termina.
+
+Es importante entender que async no hace que el codigo sea mas rapido por si
+mismo. Lo que hace es evitar que el proceso quede bloqueado sin hacer nada
+durante las esperas. Para calculo puro, como procesar imagenes o entrenar
+modelos, async no ayuda: ahi hacen falta procesos o hilos.
+
+Entornos virtuales y dependencias
+---------------------------------
+
+Cada proyecto Python deberia tener su propio entorno virtual. Un entorno virtual
+es una carpeta aislada con su propia version de Python y sus propias librerias,
+para que dos proyectos distintos no se pisen las versiones entre si.
+
+Se crea con el modulo venv, que viene incluido en Python:
+
+    python -m venv .venv
+
+Las dependencias se declaran en un archivo requirements.txt, donde cada linea
+fija una libreria y su version exacta. Fijar la version sirve para que el
+proyecto se instale igual hoy y dentro de seis meses.
+
+    pip install -r requirements.txt
+
+Variables de entorno y secretos
+-------------------------------
+
+Las claves de API, las contrasenas de base de datos y las URLs de conexion nunca
+se escriben dentro del codigo. Se leen desde variables de entorno.
+
+La practica habitual es la siguiente:
+
+- Un archivo .env local con los valores reales, que va ignorado por Git.
+- Un archivo .env.example versionado, con los mismos nombres de variables pero
+  sin valores reales, para que otra persona sepa que tiene que completar.
+- La libreria python-dotenv, que carga el .env dentro del proceso al arrancar.
+
+Si una clave se sube al repositorio hay que considerarla comprometida y rotarla,
+aunque despues se borre del codigo: queda registrada en el historial de Git.
+
+Estructura de un proyecto backend
+---------------------------------
+
+Un proyecto backend chico y ordenado suele separar responsabilidades asi:
+
+- Los modelos de datos, que describen la forma de la informacion.
+- La capa de acceso a la base de datos, que hace las consultas.
+- La capa de rutas o endpoints, que traduce HTTP a llamadas internas.
+- La configuracion, que lee las variables de entorno.
+
+La regla practica es que un archivo deberia poder explicarse en una sola frase.
+Si para describir que hace un modulo hace falta la palabra "y" tres veces, ese
+modulo esta haciendo demasiado.
+
+Errores y logging
+-----------------
+
+Un backend en produccion no puede terminar en un traceback sin explicacion. Los
+errores esperables, como un dato invalido, un recurso inexistente o un servicio
+externo caido, se capturan y se traducen a una respuesta HTTP clara con su
+codigo de estado.
+
+El logging registra lo que pasa mientras el sistema corre. Se usa el modulo
+logging de la libreria estandar en lugar de print, porque permite definir
+niveles como INFO, WARNING y ERROR, agregar marca de tiempo, y enviar la salida
+a distintos destinos sin tocar el codigo que la genera.
