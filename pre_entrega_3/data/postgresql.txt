@@ -1,0 +1,152 @@
+PostgreSQL: base de datos relacional
+====================================
+
+Que es PostgreSQL
+-----------------
+
+PostgreSQL es un sistema de gestion de bases de datos relacional, libre y de
+codigo abierto. Guarda la informacion en tablas y permite consultarla con el
+lenguaje SQL. Es la opcion mas comun cuando un backend en Python necesita
+persistencia confiable.
+
+Se dice que es relacional porque los datos se organizan en tablas que se
+relacionan entre si a traves de claves, en lugar de guardarse como documentos
+sueltos e independientes.
+
+Tablas, filas y columnas
+------------------------
+
+Una tabla representa un tipo de entidad, por ejemplo usuarios o pedidos.
+
+- Cada columna es un atributo y tiene un tipo de dato fijo.
+- Cada fila, tambien llamada registro, es una instancia concreta de esa entidad.
+
+Una tabla se crea con la sentencia CREATE TABLE:
+
+    CREATE TABLE usuarios (
+        id SERIAL PRIMARY KEY,
+        nombre VARCHAR(100) NOT NULL,
+        email VARCHAR(150) NOT NULL UNIQUE,
+        creado_en TIMESTAMP DEFAULT NOW()
+    );
+
+Los tipos de dato mas usados son INTEGER para numeros enteros, VARCHAR y TEXT
+para texto, BOOLEAN para verdadero o falso, TIMESTAMP para fecha y hora,
+NUMERIC para valores decimales exactos como los importes de dinero, y JSONB para
+guardar estructuras JSON con capacidad de indexado.
+
+Claves primarias y claves foraneas
+----------------------------------
+
+La clave primaria, o PRIMARY KEY, es la columna que identifica de forma unica a
+cada fila de una tabla. No puede repetirse ni quedar vacia. Es lo que permite
+decir sin ambiguedad "esta fila y ninguna otra".
+
+El tipo SERIAL genera automaticamente un numero incremental para cada fila
+nueva, por lo que se usa mucho como clave primaria.
+
+La clave foranea, o FOREIGN KEY, es una columna que apunta a la clave primaria
+de otra tabla. Es lo que crea la relacion entre tablas:
+
+    CREATE TABLE pedidos (
+        id SERIAL PRIMARY KEY,
+        usuario_id INTEGER NOT NULL REFERENCES usuarios(id),
+        total NUMERIC(10, 2) NOT NULL
+    );
+
+La base de datos hace cumplir esa relacion: no deja insertar un pedido cuyo
+usuario_id no exista en la tabla usuarios. Eso se llama integridad referencial y
+es una de las grandes ventajas de una base relacional, porque la regla se cumple
+aunque el codigo de la aplicacion tenga un error.
+
+Restricciones
+-------------
+
+Las restricciones son reglas que la base verifica por su cuenta:
+
+- NOT NULL: la columna no puede quedar vacia.
+- UNIQUE: el valor no puede repetirse en la tabla.
+- CHECK: una condicion que el valor debe cumplir, por ejemplo CHECK (total >= 0).
+- DEFAULT: valor que se usa si no se especifica ninguno.
+
+Consultas basicas
+-----------------
+
+Las cuatro operaciones fundamentales se conocen como CRUD: crear, leer,
+actualizar y borrar.
+
+    INSERT INTO usuarios (nombre, email) VALUES ('Ana', 'ana@mail.com');
+
+    SELECT id, nombre FROM usuarios WHERE email = 'ana@mail.com';
+
+    UPDATE usuarios SET nombre = 'Ana Perez' WHERE id = 1;
+
+    DELETE FROM usuarios WHERE id = 1;
+
+Para combinar informacion de dos tablas se usa JOIN:
+
+    SELECT u.nombre, p.total
+    FROM pedidos p
+    JOIN usuarios u ON u.id = p.usuario_id;
+
+Transacciones
+-------------
+
+Una transaccion es un conjunto de operaciones que se ejecutan como una sola
+unidad: o se aplican todas, o no se aplica ninguna.
+
+El caso tipico es una transferencia de dinero: restar de una cuenta y sumar en
+otra. Si el sistema se cae en el medio, no puede quedar el dinero restado sin
+haber sido sumado.
+
+    BEGIN;
+    UPDATE cuentas SET saldo = saldo - 100 WHERE id = 1;
+    UPDATE cuentas SET saldo = saldo + 100 WHERE id = 2;
+    COMMIT;
+
+BEGIN abre la transaccion, COMMIT confirma los cambios y ROLLBACK los descarta
+por completo.
+
+Las transacciones cumplen las propiedades ACID:
+
+- Atomicidad: todo o nada.
+- Consistencia: la base pasa de un estado valido a otro estado valido.
+- Aislamiento: las transacciones simultaneas no se interfieren entre si.
+- Durabilidad: una vez confirmada, la informacion sobrevive a una caida.
+
+Indices y rendimiento
+---------------------
+
+Un indice es una estructura auxiliar que acelera las busquedas sobre una
+columna. Sin indice, la base recorre la tabla entera fila por fila; con indice,
+va directo a lo que busca.
+
+    CREATE INDEX idx_pedidos_usuario ON pedidos (usuario_id);
+
+Los indices no son gratis: ocupan espacio en disco y hacen un poco mas lentas
+las escrituras, porque hay que actualizarlos. Por eso se crean sobre las
+columnas que realmente se usan para filtrar o para hacer joins.
+
+El comando EXPLAIN ANALYZE muestra como PostgreSQL planea ejecutar una consulta
+y cuanto tarda realmente, y es la herramienta principal para entender por que
+una consulta va lenta.
+
+Conexion desde Python
+---------------------
+
+Desde Python se puede hablar con PostgreSQL de dos formas:
+
+- Con un driver directo, escribiendo SQL a mano. El driver mas usado es psycopg.
+- Con un ORM, que traduce clases de Python a tablas. El mas conocido es
+  SQLAlchemy.
+
+En ambos casos, la cadena de conexion contiene usuario, contrasena, host, puerto
+y nombre de la base, y siempre debe leerse desde una variable de entorno:
+
+    DATABASE_URL=postgresql://usuario:clave@localhost:5432/mi_base
+
+El puerto por defecto de PostgreSQL es el 5432.
+
+Un detalle importante de rendimiento es usar un pool de conexiones. Abrir una
+conexion nueva es costoso, asi que el pool mantiene un conjunto de conexiones ya
+abiertas y las presta a cada peticion que las necesita.

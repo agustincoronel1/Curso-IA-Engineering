@@ -1,0 +1,146 @@
+Docker: contenedores para aplicaciones backend
+==============================================
+
+Que problema resuelve Docker
+----------------------------
+
+El problema clasico del desarrollo es la frase "en mi maquina funciona". Un
+proyecto anda en la computadora de quien lo escribio, pero falla en el servidor
+porque cambia la version de Python, falta una libreria del sistema o la base de
+datos esta configurada distinto.
+
+Docker resuelve eso empaquetando la aplicacion junto con todo lo que necesita
+para ejecutarse: la version exacta de Python, las dependencias, los archivos de
+configuracion y el sistema operativo base. Ese paquete corre igual en cualquier
+maquina que tenga Docker instalado.
+
+Imagenes y contenedores
+-----------------------
+
+Son los dos conceptos centrales y conviene no confundirlos:
+
+- Una imagen es una plantilla de solo lectura. Es el paquete congelado con la
+  aplicacion y sus dependencias. No se ejecuta por si sola.
+- Un contenedor es una instancia en ejecucion de una imagen. Es el proceso vivo.
+
+La analogia habitual es que la imagen es la clase y el contenedor es el objeto:
+de una misma imagen se pueden levantar muchos contenedores al mismo tiempo, y
+cada uno tiene su propio estado.
+
+Una diferencia importante frente a una maquina virtual es que el contenedor no
+incluye un sistema operativo completo: comparte el kernel de la maquina
+anfitriona y solo aisla los procesos y el sistema de archivos. Por eso arranca en
+segundos y pesa mucho menos.
+
+Dockerfile
+----------
+
+El Dockerfile es un archivo de texto con las instrucciones para construir una
+imagen. Se lee de arriba hacia abajo y cada instruccion genera una capa.
+
+    FROM python:3.12-slim
+
+    WORKDIR /app
+
+    COPY requirements.txt .
+    RUN pip install --no-cache-dir -r requirements.txt
+
+    COPY . .
+
+    EXPOSE 8000
+
+    CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+Que hace cada instruccion:
+
+- FROM define la imagen base sobre la que se construye.
+- WORKDIR fija el directorio de trabajo dentro del contenedor.
+- COPY copia archivos desde la maquina anfitriona hacia la imagen.
+- RUN ejecuta un comando durante la construccion, no al arrancar.
+- EXPOSE documenta que puerto usa la aplicacion.
+- CMD define el comando que se ejecuta cuando arranca el contenedor.
+
+Capas y cache
+-------------
+
+Cada instruccion del Dockerfile genera una capa, y Docker guarda esas capas en
+cache. Si una capa no cambio, la reutiliza en lugar de rehacerla.
+
+Por eso en el ejemplo anterior se copia primero requirements.txt y recien
+despues el resto del codigo. Mientras las dependencias no cambien, Docker
+reutiliza la capa del pip install, y la construccion tarda segundos en lugar de
+minutos. Si se copiara todo el codigo antes, cualquier cambio minimo obligaria a
+reinstalar todas las dependencias.
+
+Comandos basicos
+----------------
+
+Construir una imagen a partir del Dockerfile del directorio actual:
+
+    docker build -t mi-backend .
+
+La opcion -t asigna un nombre, o etiqueta, a la imagen.
+
+Levantar un contenedor a partir de esa imagen:
+
+    docker run -p 8000:8000 mi-backend
+
+La opcion -p publica un puerto y se lee como puerto_de_la_maquina:puerto_del_
+contenedor. Sin esa opcion, la aplicacion corre pero no se puede acceder desde
+afuera.
+
+Otros comandos frecuentes:
+
+- docker ps lista los contenedores en ejecucion.
+- docker logs muestra la salida de un contenedor.
+- docker stop detiene un contenedor.
+- docker images lista las imagenes descargadas o construidas.
+
+Volumenes y persistencia
+------------------------
+
+Los contenedores son efimeros: cuando se elimina uno, se pierde todo lo que
+escribio en su sistema de archivos. Eso es un problema para una base de datos.
+
+La solucion son los volumenes, que son espacios de almacenamiento gestionados
+por Docker y que viven fuera del ciclo de vida del contenedor:
+
+    docker run -v datos_pg:/var/lib/postgresql/data postgres:16
+
+Asi se puede borrar y recrear el contenedor de PostgreSQL sin perder los datos.
+
+Variables de entorno
+--------------------
+
+La configuracion no se hornea dentro de la imagen: se inyecta al arrancar el
+contenedor con la opcion -e o con un archivo .env.
+
+    docker run -e DATABASE_URL=postgresql://... mi-backend
+
+De esta forma la misma imagen sirve para desarrollo, para pruebas y para
+produccion, cambiando unicamente las variables. Las claves y contrasenas nunca
+deben quedar escritas dentro del Dockerfile, porque quedan guardadas en las
+capas de la imagen y cualquiera que la descargue puede leerlas.
+
+Docker Compose
+--------------
+
+Una aplicacion real casi nunca es un solo contenedor: suele ser la API mas la
+base de datos, y a veces tambien una cache. Docker Compose permite describir
+todos esos servicios en un unico archivo docker-compose.yml y levantarlos juntos
+con un solo comando:
+
+    docker compose up
+
+Compose crea ademas una red interna donde cada servicio puede llamar a los otros
+por su nombre. Por ejemplo, la API se conecta al host "db" en lugar de usar una
+direccion IP.
+
+El archivo .dockerignore
+------------------------
+
+Funciona igual que .gitignore, pero para la construccion de la imagen. Sirve
+para no copiar dentro de la imagen cosas que no corresponden, como la carpeta
+.venv, los archivos __pycache__, la carpeta .git o el archivo .env con los
+secretos reales. Esto achica el tamano de la imagen y evita filtrar
+informacion sensible.
