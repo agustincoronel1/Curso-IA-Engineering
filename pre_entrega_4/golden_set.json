@@ -1,0 +1,22 @@
+[
+  {
+    "pregunta": "¿Qué es la inyección de dependencias en FastAPI y para qué se usa Depends?",
+    "documento_id_esperado": "fastapi"
+  },
+  {
+    "pregunta": "¿Qué es un BaseModel de Pydantic y para qué sirve Field?",
+    "documento_id_esperado": "pydantic"
+  },
+  {
+    "pregunta": "¿Cuál es la diferencia entre una imagen y un contenedor en Docker?",
+    "documento_id_esperado": "docker"
+  },
+  {
+    "pregunta": "¿Qué es MVCC en PostgreSQL?",
+    "documento_id_esperado": "postgresql"
+  },
+  {
+    "pregunta": "¿Para qué sirve un namespace cuando guardamos vectores en Pinecone?",
+    "documento_id_esperado": "pinecone"
+  }
+]

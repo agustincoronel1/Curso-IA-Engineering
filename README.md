@@ -292,3 +292,25 @@ Se usa `PydanticOutputParser` de forma explícita, y no `.with_structured_output
 - Probado contra la API real de OpenAI: la ingesta indexa 12 chunks y las dos preguntas se responden como se espera.
 - La pregunta trampa devuelve `No lo sé` con referencias vacías.
 - La persistencia funciona: en la segunda ejecución no se recalcula ningún embedding.
+
+
+# Pre-entrega 4 — RAG escalable en la nube (Pinecone + búsqueda híbrida)
+
+Sistema de **recuperación** (sin generación con LLM) que migra el almacenamiento vectorial de la Pre-entrega 3 de ChromaDB local a **Pinecone Serverless**, y agrega búsqueda léxica **BM25** combinada con la semántica mediante `EnsembleRetriever` (Reciprocal Rank Fusion). Se evalúa con `Precision@5` y `Recall@5` sobre un golden set de 5 preguntas.
+
+```text
+Documentos (.md)  ->  Chunking (~600 tokens)  ->  Embeddings (1536 dim)  ->  Pinecone
+
+Consulta  ->  BM25 (léxico) + Pinecone (semántico)  ->  EnsembleRetriever (RRF)  ->  Top-5  ->  Precision@5 / Recall@5
+```
+
+Documentación completa, arquitectura, decisiones técnicas y pasos para reconstruir el índice: **[`pre_entrega_4/README.md`](pre_entrega_4/README.md)**.
+
+## Ejecución
+
+```powershell
+python -m pre_entrega_4.setup_pinecone
+python -m pre_entrega_4.ingest
+python -m pre_entrega_4.main
+python -m pre_entrega_4.evaluate
+```
