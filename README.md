@@ -314,3 +314,27 @@ python -m pre_entrega_4.ingest
 python -m pre_entrega_4.main
 python -m pre_entrega_4.evaluate
 ```
+
+
+# Pre-entrega 5 — Agente autónomo con LangGraph (ReAct + memoria SQLite)
+
+Agente que responde preguntas sobre clientes y sus pedidos (dataset local en
+JSON), decidiendo por sí mismo —vía tool calling, sin ningún `if/else`
+manual— cuándo usar cada herramienta y con qué argumentos. Implementa el
+ciclo ReAct completo (`agent -> tools -> agent`) con `StateGraph` de
+LangGraph, memoria persistente por `thread_id` en SQLite y un
+`recursion_limit` para evitar loops infinitos.
+
+```text
+Usuario -> agent (LLM + tools bindeadas) -> ¿tool call? -> tools -> agent -> ... -> respuesta final
+```
+
+Documentación completa, arquitectura, explicación de cada concepto de
+LangGraph y traza de ejemplo: **[`pre_entrega_5/README.md`](pre_entrega_5/README.md)**.
+
+## Ejecución
+
+```powershell
+pip install -r pre_entrega_5\requirements.txt
+python -m pre_entrega_5.main
+```

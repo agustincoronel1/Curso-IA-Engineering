@@ -3,3 +3,4 @@
 __pycache__/
 *.pyc
 vectorstore/
+pre_entrega_5/data/checkpoints.sqlite*

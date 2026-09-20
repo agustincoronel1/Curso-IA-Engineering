@@ -1,0 +1,14 @@
+[
+  {
+    "cliente_id": 102,
+    "nombre": "Ana Gómez"
+  },
+  {
+    "cliente_id": 203,
+    "nombre": "Carlos Pérez"
+  },
+  {
+    "cliente_id": 304,
+    "nombre": "Lucía Fernández"
+  }
+]
