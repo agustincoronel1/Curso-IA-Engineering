@@ -1,16 +1,6 @@
-"""Demo de la Pre-entrega 6: orquestador multi-agente jerárquico con LangGraph.
+"""Demo ejecutable de la Pre-entrega 6."""
 
-Ejecutar desde ESTA carpeta (no desde la raíz del repo):
-
-    cd pre_entrega_6
-    pip install -r requirements.txt
-    python main.py
-
-Corre una única consulta de punta a punta y va mostrando, en orden, la
-intervención de cada agente (researcher -> analyst -> synthesizer),
-coordinada en todo momento por el supervisor, hasta cerrar con
-`task_completed = True`.
-"""
+import argparse
 import os
 import sys
 
@@ -19,93 +9,85 @@ from langchain_core.messages import HumanMessage
 
 from graph import MAX_STEPS, construir_grafo
 
-# Mismo criterio que pre_entrega_5: load_dotenv() busca el .env subiendo
-# desde el directorio de trabajo actual, así que encuentra el .env de la
-# raíz del repo aunque este script se corra parado en pre_entrega_6/.
 load_dotenv()
 
 CONSULTA_DEMO = (
-    "Necesito evaluar si tiene sentido implementar un sistema con IA para "
-    "un corralón. Quiero que investigues beneficios posibles, analices "
-    "impacto operativo y cierres con una recomendación concreta."
+    "Necesito evaluar si tiene sentido implementar un sistema con IA para un corralón. "
+    "Quiero que investigues beneficios posibles, analices impacto operativo y cierres "
+    "con una recomendación concreta."
 )
 
 
 def _validar_configuracion() -> None:
-    """Corta con un mensaje claro si falta la API Key, antes de armar el grafo."""
+    if sys.version_info < (3, 12):
+        raise RuntimeError("Esta entrega requiere Python 3.12 o superior.")
     if not os.getenv("OPENAI_API_KEY"):
-        raise ValueError(
-            "Falta la variable de entorno OPENAI_API_KEY.\n"
-            "Agregala al archivo .env de la raíz del repo (el mismo que "
-            "usan las otras pre-entregas). Si querés usar un modelo "
-            "distinto a gpt-4o-mini, agregá también MODEL_NAME."
+        raise RuntimeError(
+            "Falta OPENAI_API_KEY. Copiá .env.example como .env y completá tu clave."
         )
 
 
-def _imprimir_contribuciones(contribuciones: list[dict]) -> None:
-    print("\n--- CONTRIBUCIONES GUARDADAS POR CADA AGENTE ---")
-    for i, aporte in enumerate(contribuciones, start=1):
-        print(f"\n[{i}] Agente: {aporte['agente']}")
-        print(aporte["resultado"])
-
-
-def main() -> None:
-    print("=== PRE-ENTREGA 6: ORQUESTADOR MULTI-AGENTE (LANGGRAPH) ===")
-
-    try:
-        _validar_configuracion()
-    except ValueError as error:
-        print(f"\nError de configuración: {error}")
-        return
-
-    grafo = construir_grafo()
-
-    print(f"\nSolicitud original del usuario:\n{CONSULTA_DEMO}")
-
-    estado_inicial = {
-        "messages": [HumanMessage(content=CONSULTA_DEMO)],
-        "user_request": CONSULTA_DEMO,
+def _estado_inicial(consulta: str) -> dict:
+    return {
+        "messages": [HumanMessage(content=consulta)],
+        "user_request": consulta,
         "next_agent": "researcher",
         "research_result": None,
         "analysis_result": None,
         "final_answer": None,
+        "supervisor_feedback": None,
         "contributions": [],
         "steps": 0,
         "task_completed": False,
         "validation_notes": [],
     }
 
-    # recursion_limit es la red de seguridad de LangGraph (cuenta pasos de
-    # NODO, no decisiones del supervisor): se deja generosa pero finita.
-    # La protección real contra loops infinitos es MAX_STEPS, ya aplicada
-    # dentro de graph.nodo_supervisor.
-    resultado = grafo.invoke(estado_inicial, config={"recursion_limit": 25})
 
-    print("\n--- INTERVENCIÓN DEL AGENTE INVESTIGADOR ---")
-    print(resultado["research_result"])
+def _imprimir_resultado(resultado: dict) -> None:
+    print("\n--- INVESTIGACIÓN ---")
+    print(resultado.get("research_result") or "(sin resultado)")
 
-    print("\n--- INTERVENCIÓN DEL AGENTE ANALISTA ---")
-    print(resultado["analysis_result"])
+    print("\n--- ANÁLISIS / CÓMPUTO ---")
+    print(resultado.get("analysis_result") or "(sin resultado)")
 
     print("\n--- SÍNTESIS FINAL ---")
-    print(resultado["final_answer"])
+    print(resultado.get("final_answer") or "(sin resultado)")
 
-    _imprimir_contribuciones(resultado["contributions"])
+    print("\n--- CONTRIBUCIONES POR AGENTE ---")
+    for i, aporte in enumerate(resultado.get("contributions", []), start=1):
+        print(f"[{i}] {aporte['agente']}")
 
-    print("\n--- TRAZA DE DECISIONES DEL SUPERVISOR ---")
-    for nota in resultado["validation_notes"]:
+    print("\n--- VALIDACIÓN Y RUTEO DEL SUPERVISOR ---")
+    for nota in resultado.get("validation_notes", []):
         print(f"- {nota}")
 
     print(
-        f"\n[Flujo terminado sin loop infinito: task_completed={resultado['task_completed']}, "
-        f"decisiones del supervisor={resultado['steps']} (tope configurado: {MAX_STEPS})]"
+        f"\nEstado final: task_completed={resultado.get('task_completed')} | "
+        f"decisiones={resultado.get('steps')} | MAX_STEPS={MAX_STEPS}"
     )
 
 
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Demo del orquestador multi-agente")
+    parser.add_argument(
+        "--query",
+        default=CONSULTA_DEMO,
+        help="Consulta a resolver. Si se omite, se usa la consulta demo.",
+    )
+    args = parser.parse_args()
+
+    print("=== PRE-ENTREGA 6: ORQUESTADOR MULTI-AGENTE ===")
+    _validar_configuracion()
+
+    grafo = construir_grafo()
+    resultado = grafo.invoke(_estado_inicial(args.query), config={"recursion_limit": 25})
+    _imprimir_resultado(resultado)
+
+    if not resultado.get("task_completed") or not resultado.get("final_answer"):
+        raise RuntimeError("El flujo terminó sin completar una síntesis final válida.")
+
+
 if __name__ == "__main__":
-    # La consola de Windows no siempre usa UTF-8 por default, y esta demo
-    # imprime texto con tildes y "ñ". Sin esto, se ve con caracteres
-    # corridos aunque los datos estén bien (mismo ajuste que pre_entrega_5).
     try:
         sys.stdout.reconfigure(encoding="utf-8")
     except (AttributeError, ValueError):
